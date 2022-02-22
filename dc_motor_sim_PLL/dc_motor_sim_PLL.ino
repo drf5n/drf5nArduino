@@ -1,14 +1,20 @@
 // simulate a PWM driven motor controlled by potentiometer
-// DaveX 2022-02-21 CC BY-SA
+// DaveX 2022-02-21 CC BY-SA 
+// https://github.com/drf5n/drf5nArduino/tree/main/dc_motor_sim_PLL
 // This simulates a PID+PWM controlled DC motor with the simulated motor
 // control read back from the pin 9 OC1A PWM read back from the OCR1A register
+//
+// The simulation at https://wokwi.com/arduino/projects/324274590349001300
+// uses these Uno Connections:
 // 
-// input: 0-5V potentiometer on A0 sets RPM 0-255
-// output PWM value to motor
+//   input: A0: 0-5V potentiometer on A0 sets RPM 0-255
+//   output: digitalPin9: PWM value to motor
+//   Serial output: of PID state and Motor state
 // 
-// motor simiulated by a state space motor in class PmMotor
-//  This aims at PLL control of angular position rather than RPM
-// See https://www.romanblack.com/onesec/DCmotor_xtal.htm
+// Motor simulated by a state space model in class PmMotor
+//  This sketch aims at PLL control of angular position rather than control of RPM
+// See https://www.romanblack.com/onesec/DCmotor_xtal.htm for work on PLL control.
+//
 // https://wokwi.com/arduino/projects/323970337959051859 does speed control
 //
 // Discussions at:
@@ -16,10 +22,9 @@
 // https://forum.arduino.cc/t/why-doesnt-analogwrite-protect-its-writes-to-16bit-registers/961470
 // https://forum.arduino.cc/t/motor-rpm-measurement-using-optical-encoder-for-pi-control/960163/13?u=davex
 
-
 #include <PID_v1.h> // https://playground.arduino.cc/Code/PIDLibrary/
 
-class PmMotor { // Permanent Magnet Motor
+class PmMotor { // Permanent Magnet Motor Simulation
 public:
   // DC PM motor state space model per 
   // https://ctms.engin.umich.edu/CTMS/index.php?example=MotorSpeed&section=SystemModeling
@@ -254,5 +259,4 @@ void loop() {
   myMotor.update(analogGetPwm9());
   report();
 }
-
 
