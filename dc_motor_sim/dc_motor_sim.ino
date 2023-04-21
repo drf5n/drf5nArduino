@@ -29,7 +29,7 @@ class PmMotor { // Permanent Magnet Motor
     float V = 5; //  voltage (controlled by pwm fraction)
     uint8_t pwm_level; // 0-255 pwm controlled voltage
     // state vars
-    float theta = 0;    // rotational position (rads)
+    float theta = 0;    // rotational position (radians)
     float theta_dot = 0; // rad/sec
     float i_amps = 0 ; // coil current amps
     // outputs
@@ -42,7 +42,7 @@ class PmMotor { // Permanent Magnet Motor
     float B = 0.0001 ; // fluid friction N*m*s
     float L = 0.05; // motor inductance H
     float Ke = 0.001; // speed constant V/rad/sec
-    float Kt = 1; // torqe constant N*m/A
+    float Kt = 1; // torque constant N*m/A
     float R = 1.0; // motor resistance ohms
     float i_full = 0.01; // no load current at full speed voltage
     // governing eqns:
@@ -107,50 +107,51 @@ class PmMotor { // Permanent Magnet Motor
       }
     }
     void printConfig(void) { // print the configuration vars
+      Serial.print("Motor Configuration");
       Serial.print(" MaxRPM=");
       Serial.print(MaxRPM);
       Serial.print(" Ke=");
-      Serial.print(Ke);
-      Serial.print(" Kt=");
-      Serial.print(Kt);
-      Serial.print(" B=");
-      Serial.print(B);
-      Serial.print(" J=");
-      Serial.print(J);
-      Serial.print(" L=");
-      Serial.print(L);
-      Serial.print(" V=");
-      Serial.print(V);
-      Serial.print(" pwm_level=");
+      Serial.print(Ke, 4);
+      Serial.print("V/rad/sec, Kt=");
+      Serial.print(Kt, 4);
+      Serial.print("N*m/A B=");
+      Serial.print(B, 4);
+      Serial.print("N*m*s, J=");
+      Serial.print(J, 4);
+      Serial.print("kg*m2, L=");
+      Serial.print(L, 4);
+      Serial.print("H V=");
+      Serial.print(V, 4);
+      Serial.print("V pwm_level=");
       Serial.print(pwm_level);
-      Serial.println();
+      Serial.println('\n');
     }
     void printState(void) { // Print the state variables
       Serial.print(" pwm=");
       Serial.print(pwm_level);
       Serial.print(" i_amps=");
       Serial.print(i_amps);
-      Serial.print(" theta=");
+      Serial.print("A theta=");
       Serial.print(theta);
-      Serial.print(" theta_dot=");
+      Serial.print("rad theta_dot=");
       Serial.print(theta_dot);
-      Serial.print(" theta_dotdot=");
+      Serial.print("rad/s theta_dotdot=");
       Serial.print(theta_dotdot);
 
-      Serial.println();
+      Serial.println("rad/s2");
     }
 
     void printStateRPM(void) { //print the state in rev & RPM form
-      Serial.print("Motor: pwm=");
+      Serial.print(" Motor: pwm=");
       Serial.print(pwm_level);
       Serial.print(" i=");
       Serial.print(i_amps);
       Serial.print("A ");
       Serial.print(theta / 2 / PI);
       Serial.print("rev ");
-      Serial.print(theta_dot / 2 / PI * 60);
+      Serial.print(theta_dot / 2 / PI * 60, 5);
       Serial.print("RPM ");
-      Serial.print(theta_dotdot / 2 / PI * 60);
+      Serial.print(theta_dotdot / 2 / PI * 60, 5);
       Serial.print("RPM/s ");
 
       Serial.println();
@@ -163,6 +164,8 @@ double myRPM = 0.0;
 double mySetpointRPM = 0.0;
 double myCV = 0.0;
 const byte modePin = 2;
+const byte pwmPin = 9;
+
 PID motorPID(&myRPM, &myCV, &mySetpointRPM, 1, 0.5, 0, DIRECT);
 
 void report (void) {
@@ -190,17 +193,19 @@ void report (void) {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  myMotor.V = 5;
-  myMotor.setResistance(1.2);
-  myMotor.setKeMaxRPMVR(1526);
+  myMotor.V = 5;  // Volts
+  myMotor.setResistance(1.2); // Ohms
+  myMotor.setKeMaxRPMVR(15000); // speed constant V/rad/sec
   myMotor.i_full = 0.1; // Amps at no-load full speed
-  myMotor.B = 0.0001e-0; //
-  myMotor.setInertia(0.1);
-  myMotor.setKtFromIB();
+  myMotor.B = 0.0001e-20; // fluid friction N*m*s
+  myMotor.setInertia(0.001); // inertia kg*m2
+  myMotor.setKtFromIB();  // torque constant N*m/A
+  myMotor.L = 0.05;  // motor inductance H
   myMotor.printConfig();
   myMotor.printState();
 
   pinMode(modePin, INPUT_PULLUP);
+  pinMode(pwmPin, OUTPUT);
 
   myRPM = myMotor.theta_dot * 60 / 2 / PI;
   mySetpointRPM = analogRead(A0); // 0-1024 rpm
@@ -217,7 +222,7 @@ int analogGetPwm9() { // PWM 9 on UNO is OCR1A
   // Uno https://docs.arduino.cc/hacking/hardware/PinMapping168
   // Mega https://docs.arduino.cc/hacking/hardware/PinMapping2560
 
-  return ((TCCR1A & bit(COM1A1)) ? OCR1A : digitalRead(9) * 255);
+  return ((TCCR1A & bit(COM1A1)) ? OCR1A : digitalRead(pwmPin) * 255);
 }
 
 void loop() {
@@ -226,9 +231,9 @@ void loop() {
   myRPM = myMotor.theta_dot * 60 / 2 / PI; // measure the motor speed
   if (digitalRead(modePin) == LOW) {
     motorPID.Compute();                 // PID to calculate CV from SP and MV
-    analogWrite(9, myCV); // push PID control value out PWM pin 9
+    analogWrite(pwmPin, myCV); // push PID control value out PWM pin 9
   } else {
-    analogWrite(9, mySetpointRPM / 4);
+    analogWrite(pwmPin, mySetpointRPM / 4);
   }
 
   // Simulate a motor attached to a PWM pin
